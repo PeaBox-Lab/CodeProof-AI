@@ -1,0 +1,13 @@
+version: 1
+fail_under: 70
+source_paths: [src]
+test_paths: [tests]
+timeout_seconds: 300
+required_tools: [ruff, pytest]
+checks:
+  imports: {enabled: true, weight: 10}
+  ruff: {enabled: true, weight: 15}
+  mypy: {enabled: true, weight: 15}
+  pytest: {enabled: true, weight: 30}
+  bandit: {enabled: true, weight: 15}
+  semgrep: {enabled: true, weight: 15, config: auto}
