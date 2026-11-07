@@ -11,10 +11,17 @@ license={text="MIT"}
 dependencies=["typer>=0.12,<1","rich>=13.7,<15","pydantic>=2.7,<3","PyYAML>=6,<7"]
 [project.optional-dependencies]
 checkers=["pytest>=8,<10","ruff>=0.6,<1","mypy>=1.11,<2","bandit>=1.7,<2","semgrep>=1.80,<2"]
-dev=["codeproof-ai[checkers]"]
+audit=["pip-audit>=2.7,<3"]
+dev=["codeproof-ai[checkers]", "types-PyYAML>=6,<7"]
 [project.scripts]
 codeproof="codeproof.cli:app"
 [tool.hatch.build.targets.wheel]
 packages=["src/codeproof"]
 [tool.pytest.ini_options]
 testpaths=["tests"]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "B", "UP"]

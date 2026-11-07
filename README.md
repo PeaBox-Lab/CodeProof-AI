@@ -19,15 +19,47 @@ pip install -e ".[checkers]"
 codeproof scan .
 ```
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:3b67dbb46462cc622268fbccfec224b9fadec6e62adcd31c971ddfbdf0fff3c1 -->
+
 ## Commands
+
 ```bash
-codeproof doctor
-codeproof init
-codeproof inventory .
+codeproof tools                         # supported checks and execution behavior
+codeproof doctor                        # availability and install guidance
+codeproof init                          # write a default policy
+codeproof inventory .                   # public symbols, not coverage
 codeproof generate-tests . --output tests/generated
-codeproof scan . --format all --fail-under 70
+codeproof scan . --format all --fail-under 70 --jobs 3
+codeproof scan . --config path/to/policy.yml --checks ruff,pytest,syntax
 ```
-Reports are stored under `.codeproof/reports/`.
+
+Reports are stored under `.codeproof/reports/`. Open `codeproof-report.html` for offline search, status filters, and expandable evidence. JSON and Markdown remain available. Paths are positional; the earlier `--path` option is also supported. Exit codes: **0** policy passed, **1** policy failed, **2** invalid usage or configuration.
+
+### Policy and additional tools
+
+Partial policies overlay the six default checks; explicitly disable any you do not want. A selected or configured check cannot bypass a required tool gate. Remove a tool from `required_tools` only when intentionally changing the policy. For a quick execution-free syntax-only scan, use:
+
+```yaml
+# .codeproof.yml
+required_tools: []
+source_paths: [src]
+checks:
+  syntax: {enabled: true, weight: 10}
+```
+
+```bash
+codeproof scan . --checks syntax
+```
+
+To add dependency auditing, install `pip install 'codeproof-ai[audit]'`, provide a root `requirements.txt`, and add `pip-audit: {enabled: true, weight: 15}` under `checks`. This opt-in tool queries vulnerability services and may invoke package tooling while resolving dependencies. Unsupported manifests are reported unavailable; the developer environment is never audited as a fallback.
+
+`jobs: 1` (default) runs serially; `--jobs 2` through `--jobs 8` allow concurrency. Tests and imports can share resources, so choose concurrency to suit the repository. Invalid thresholds, negative/nonfinite weights, unknown tools, and unknown policy keys are rejected.
+
+Generated tests check symbol exposure and execute imports; review them before running. Existing files are preserved unless `--force` is passed. See the [audit and prioritized roadmap](docs/roadmap.md) for delivered changes, compatibility notes, and follow-up work.
+
+<!-- /coderabbit-ai-generated:v1 -->
 
 ## Confidence model
 The score is the weighted percentage of included checks that pass. Missing required tools fail policy. Missing optional tools are marked unavailable and excluded from the denominator. A passing report is evidence that configured checks passed, not proof of correctness.
