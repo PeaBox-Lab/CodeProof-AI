@@ -1,5 +1,6 @@
 from html import escape
 from pathlib import Path
+from typing import Any
 
 from .models import ScanReport, Status
 
@@ -112,7 +113,7 @@ def html(report: ScanReport):
 
 
 def write(report: ScanReport, out: Path, fmt: str):
-    if fmt not in {"all", "json", "markdown", "html"}:
+    if fmt not in {"all", "json", "markdown", "html", "sarif"}:
         raise ValueError(f"Unsupported report format: {fmt}")
     out.mkdir(parents=True, exist_ok=True)
     made = []
@@ -126,9 +127,78 @@ def write(report: ScanReport, out: Path, fmt: str):
             path = out / f"codeproof-report.{suffix}"
             path.write_text(render(), encoding="utf-8")
             made.append(path)
+    if fmt == "sarif":
+        import json
+
+        path = out / "codeproof-report.sarif"
+        path.write_text(json.dumps(sarif(report), indent=2), encoding="utf-8")
+        made.append(path)
     raw = out.parent / "raw"
     raw.mkdir(parents=True, exist_ok=True)
     for result in report.results:
         if result.raw_output:
             (raw / f"{result.name}.txt").write_text(result.raw_output, encoding="utf-8")
     return made
+
+
+def sarif(report: ScanReport):
+    """Export normalized findings for SARIF 2.1.0 consumers."""
+    rules: dict[str, Any] = {}
+    results = []
+    root = Path(report.target).resolve()
+    for check in report.results:
+        for finding in check.findings:
+            rule = f"{check.name}/{finding.rule or 'finding'}"
+            rules.setdefault(
+                rule,
+                {"id": rule, "shortDescription": {"text": finding.rule or check.name}},
+            )
+            level = (
+                "error"
+                if finding.level.lower() in {"error", "high", "critical"}
+                else "note"
+                if finding.level.lower() in {"info", "low"}
+                else "warning"
+            )
+            item: dict[str, Any] = {
+                "ruleId": rule,
+                "level": level,
+                "message": {"text": finding.message},
+            }
+            if finding.path:
+                original = Path(finding.path)
+                path: Path | None = original
+                if original.is_absolute():
+                    try:
+                        path = original.relative_to(root)
+                    except ValueError:
+                        path = None
+                if path is not None and ".." not in path.parts:
+                    from urllib.parse import quote
+
+                    location: dict[str, Any] = {
+                        "artifactLocation": {
+                            "uri": quote(path.as_posix()),
+                            "uriBaseId": "%SRCROOT%",
+                        }
+                    }
+                    if finding.line and finding.line > 0:
+                        location["region"] = {"startLine": finding.line}
+                    item["locations"] = [{"physicalLocation": location}]
+            results.append(item)
+    return {
+        "version": "2.1.0",
+        "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+        "runs": [
+            {
+                "tool": {
+                    "driver": {
+                        "name": "CodeProof AI",
+                        "version": report.codeproof_version,
+                        "rules": list(rules.values()),
+                    }
+                },
+                "results": results,
+            }
+        ],
+    }

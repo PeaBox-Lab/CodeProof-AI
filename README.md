@@ -61,7 +61,28 @@ Generated tests check symbol exposure and execute imports; review them before ru
 
 <!-- /coderabbit-ai-generated:v1 -->
 
+<!-- coderabbit-ai-generated:v1 -->
+
+<!-- coderabbit-ai-generated-section:v1:92fa63fb64ba1e1531e19feb0d45a9570a922b4234965c93f86f078af595fe02 -->
+
+## Developer workspace
+
+```bash
+codeproof serve .
+# Open http://127.0.0.1:8765/
+```
+
+Run scans from a responsive browser workspace with four presets, durable history, searchable findings, report comparison, tool readiness and policy inspection. Export JSON, Markdown, HTML or SARIF. Required policy gates remain active. Browser scans require opt-in for code execution and network checks. History keeps the latest 50 runs locally.
+
+```bash
+codeproof scan . --format sarif
+```
+
+Read the [workspace guide and use cases](docs/developer-workspace.md) for setup, workflows, storage and deployment boundaries. This is a local single-user workspace.
+
 ## Confidence model
+
+<!-- /coderabbit-ai-generated:v1 -->
 The score is the weighted percentage of included checks that pass. Missing required tools fail policy. Missing optional tools are marked unavailable and excluded from the denominator. A passing report is evidence that configured checks passed, not proof of correctness.
 
 ## Security

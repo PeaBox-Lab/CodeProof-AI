@@ -25,6 +25,7 @@ class Format(str, Enum):
     json = "json"
     markdown = "markdown"
     html = "html"
+    sarif = "sarif"
 
 
 def policy(root: Path, config: Path | None = None):
@@ -160,6 +161,34 @@ def scan(
     for dest in write(report, root / output, format.value):
         console.print(f"Report: {dest}")
     raise typer.Exit(0 if report.policy_passed else 1)
+
+
+@app.command()
+def serve(
+    path: Annotated[Path, typer.Argument()] = Path("."),
+    host: str = "127.0.0.1",
+    port: int = typer.Option(8765, min=1, max=65535),
+    allowed_host: str | None = typer.Option(
+        None, help="Additional hostname for a trusted local reverse proxy"
+    ),
+):
+    """Open the local developer workspace with scan history and findings."""
+    from .workspace import Workspace, make_server
+
+    root = path.resolve()
+    policy(root)
+    workspace = Workspace(root)
+    try:
+        server = make_server(workspace, host, port, allowed_host)
+    except OSError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    console.print(f"CodeProof workspace: http://{host}:{port} · {root.name}")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
 
 
 if __name__ == "__main__":
