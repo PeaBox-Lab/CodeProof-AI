@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CodeProof AI — Dashboard</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">CP</div>
+        <div>
+          <h1>CodeProof AI</h1>
+          <p class="muted">Evidence-backed verification</p>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="findings">Findings</button>
+        <button class="nav-btn" data-view="inventory">Inventory</button>
+        <button class="nav-btn" data-view="policy">Policy</button>
+        <button class="nav-btn" data-view="history">History</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="field">
+          <label for="target">Target repository</label>
+          <input id="target" type="text" spellcheck="false" />
+        </div>
+        <button id="run-scan" class="primary">Run Scan</button>
+        <p id="scan-status" class="muted small"></p>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar">
+        <div>
+          <h2 id="view-title">Dashboard</h2>
+          <p id="project-meta" class="muted">No scan loaded.</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="refresh-doctor" class="ghost">Check Tools</button>
+          <button id="open-reports" class="ghost">Open Reports Folder</button>
+        </div>
+      </header>
+
+      <section id="view-dashboard" class="view active">
+        <div class="cards">
+          <div class="card score-card">
+            <div class="score-ring" id="score-ring"><span id="score-value">—</span></div>
+            <div>
+              <div class="kpi-label">Confidence Score</div>
+              <div id="grade" class="grade">—</div>
+              <div id="policy-badge" class="badge">No data</div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="kpi-label">Checks</div>
+            <div id="kpi-checks" class="kpi">—</div>
+            <div class="muted small" id="kpi-checks-sub"></div>
+          </div>
+          <div class="card">
+            <div class="kpi-label">Findings</div>
+            <div id="kpi-findings" class="kpi">—</div>
+            <div class="muted small">Structured findings reported by adapters</div>
+          </div>
+          <div class="card">
+            <div class="kpi-label">Fail Under</div>
+            <div id="kpi-threshold" class="kpi">—</div>
+            <div class="muted small" id="kpi-generated"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Check Results</h3>
+            <div class="filters">
+              <select id="status-filter">
+                <option value="all">All statuses</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="unavailable">Unavailable</option>
+                <option value="error">Error</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="results-table">
+              <thead><tr><th>Check</th><th>Status</th><th>Weight</th><th>Required</th><th>Duration</th><th>Summary</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h3>Limitations</h3></div>
+          <ul id="limitations" class="limitations"></ul>
+        </div>
+      </section>
+
+      <section id="view-findings" class="view">
+        <div class="panel">
+          <div class="panel-head"><h3>Findings</h3><input id="finding-search" class="search" placeholder="Filter findings..." /></div>
+          <div class="table-wrap">
+            <table id="findings-table">
+              <thead><tr><th>Check</th><th>Level</th><th>Rule</th><th>Path</th><th>Line</th><th>Message</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-inventory" class="view">
+        <div class="panel">
+          <div class="panel-head"><h3>Public Symbols</h3><button id="load-inventory" class="ghost">Load Inventory</button></div>
+          <div class="table-wrap">
+            <table id="inventory-table">
+              <thead><tr><th>Symbol</th><th>File</th><th>Line</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-policy" class="view">
+        <div class="panel">
+          <div class="panel-head"><h3>Effective Policy</h3><button id="load-policy" class="ghost">Reload</button></div>
+          <pre id="policy-json" class="codeblock"></pre>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Tool Availability</h3></div>
+          <div id="doctor" class="doctor-grid"></div>
+        </div>
+      </section>
+
+      <section id="view-history" class="view">
+        <div class="panel">
+          <div class="panel-head"><h3>Report History</h3><button id="load-history" class="ghost">Reload</button></div>
+          <div class="table-wrap">
+            <table id="history-table">
+              <thead><tr><th>Generated</th><th>Project</th><th>Score</th><th>Grade</th><th>Policy</th><th>Action</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

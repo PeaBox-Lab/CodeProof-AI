@@ -1,0 +1,81 @@
+:root {
+  --bg: #0b1020;
+  --bg-elev: #121933;
+  --bg-elev-2: #182142;
+  --border: rgba(255,255,255,0.08);
+  --text: #e8eefc;
+  --muted: #9fb0d0;
+  --primary: #6ea8fe;
+  --primary-2: #4c7dff;
+  --good: #2dd4bf;
+  --warn: #f59e0b;
+  --bad: #fb7185;
+  --neutral: #64748b;
+  --shadow: 0 10px 30px rgba(0,0,0,0.25);
+  --radius: 14px;
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: radial-gradient(1200px 600px at 10% -10%, #172554 0%, transparent 50%), var(--bg); color: var(--text); font: 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+.app { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+.sidebar { border-right: 1px solid var(--border); background: linear-gradient(180deg, rgba(18,25,51,0.95), rgba(11,16,32,0.98)); padding: 20px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100vh; }
+.brand { display: flex; gap: 12px; align-items: center; }
+.logo { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, var(--primary), #8b5cf6); display: grid; place-items: center; font-weight: 700; box-shadow: var(--shadow); }
+.brand h1 { font-size: 18px; margin: 0; }
+.muted { color: var(--muted); margin: 0; }
+.small { font-size: 12px; }
+nav { display: flex; flex-direction: column; gap: 6px; }
+.nav-btn { text-align: left; padding: 10px 12px; background: transparent; border: 1px solid transparent; border-radius: 10px; cursor: pointer; color: var(--muted); }
+.nav-btn:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+.nav-btn.active { background: rgba(110,168,254,0.12); border-color: rgba(110,168,254,0.25); color: var(--text); }
+.sidebar-footer { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+input, select { width: 100%; background: var(--bg-elev); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; outline: none; }
+input:focus, select:focus { border-color: rgba(110,168,254,0.5); }
+.primary { background: linear-gradient(135deg, var(--primary-2), #6366f1); border: none; padding: 11px 14px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+.primary:disabled { opacity: 0.6; cursor: progress; }
+.ghost { background: rgba(255,255,255,0.03); border: 1px solid var(--border); padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+.ghost:hover { background: rgba(255,255,255,0.06); }
+.content { padding: 22px 26px 40px; }
+.topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.topbar h2 { margin: 0 0 4px; font-size: 24px; }
+.topbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.view { display: none; }
+.view.active { display: block; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 14px; }
+.card, .panel { background: linear-gradient(180deg, rgba(24,33,66,0.9), rgba(18,25,51,0.92)); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.card { padding: 16px; }
+.score-card { display: flex; gap: 14px; align-items: center; }
+.score-ring { width: 72px; height: 72px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--neutral) 0deg, rgba(255,255,255,0.06) 0deg); position: relative; }
+.score-ring::before { content: ""; position: absolute; inset: 7px; background: var(--bg-elev); border-radius: 50%; }
+.score-ring span { position: relative; font-size: 18px; font-weight: 700; }
+.kpi-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.kpi { font-size: 28px; font-weight: 700; margin-top: 4px; }
+.grade { font-size: 22px; font-weight: 700; margin: 2px 0 6px; }
+.badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: rgba(100,116,139,0.2); color: var(--muted); }
+.badge.pass { background: rgba(45,212,191,0.15); color: var(--good); }
+.badge.fail { background: rgba(251,113,133,0.15); color: var(--bad); }
+.panel { margin-bottom: 14px; overflow: hidden; }
+.panel-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.panel-head h3 { margin: 0; font-size: 16px; }
+.table-wrap { overflow: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 11px 14px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; background: rgba(255,255,255,0.01); }
+tbody tr:hover { background: rgba(255,255,255,0.02); }
+.status { display: inline-flex; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; text-transform: capitalize; }
+.status.passed { background: rgba(45,212,191,0.15); color: var(--good); }
+.status.failed { background: rgba(251,113,133,0.15); color: var(--bad); }
+.status.unavailable, .status.skipped { background: rgba(100,116,139,0.2); color: #b6c2d9; }
+.status.error { background: rgba(245,158,11,0.18); color: var(--warn); }
+.limitations { margin: 0; padding: 12px 18px 18px 34px; color: var(--muted); }
+.limitations li { margin: 6px 0; }
+.codeblock { margin: 0; padding: 16px; overflow: auto; color: #cfe1ff; font: 12px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; }
+.doctor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; padding: 14px 16px 16px; }
+.doctor-item { padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,0.02); }
+.doctor-item .name { font-weight: 600; }
+.search { max-width: 320px; }
+.filters select { width: auto; min-width: 160px; }
+@media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (max-width: 860px) { .app { grid-template-columns: 1fr; } .sidebar { position: static; height: auto; } }

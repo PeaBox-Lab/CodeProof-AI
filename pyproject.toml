@@ -16,5 +16,10 @@ dev=["codeproof-ai[checkers]"]
 codeproof="codeproof.cli:app"
 [tool.hatch.build.targets.wheel]
 packages=["src/codeproof"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/codeproof/gui" = "codeproof/gui"
+
 [tool.pytest.ini_options]
 testpaths=["tests"]
+

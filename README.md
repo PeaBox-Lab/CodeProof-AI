@@ -9,6 +9,7 @@ Local-first Python CLI and reusable GitHub Action for verifying Python repositor
 - CI-friendly exit codes
 - GitHub composite Action
 - Local-first scanning
+- Modern local GUI dashboard (`codeproof gui`) for scans, findings, policy, and history
 
 ## Install
 ```bash
@@ -26,8 +27,9 @@ codeproof init
 codeproof inventory .
 codeproof generate-tests . --output tests/generated
 codeproof scan . --format all --fail-under 70
+codeproof gui . --host 127.0.0.1 --port 8787
 ```
-Reports are stored under `.codeproof/reports/`.
+Reports are stored under `.codeproof/reports/`. The GUI runs locally and uses the same core engine/policy as the CLI. See `ROADMAP.md` for planned enhancements.
 
 ## Confidence model
 The score is the weighted percentage of included checks that pass. Missing required tools fail policy. Missing optional tools are marked unavailable and excluded from the denominator. A passing report is evidence that configured checks passed, not proof of correctness.
