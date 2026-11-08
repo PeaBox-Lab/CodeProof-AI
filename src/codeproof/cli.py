@@ -193,3 +193,11 @@ def serve(
 
 if __name__ == "__main__":
     app()
+@app.command()
+def gui(path:Path=Path("."),host:str="127.0.0.1",port:int=8787,no_open:bool=False):
+    """Launch the local CodeProof GUI dashboard."""
+    from .web import serve
+    serve(host=host,port=port,target=path.resolve(),open_browser=not no_open)
+
+if __name__=="__main__":app()
+
