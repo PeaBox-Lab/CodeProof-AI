@@ -15,7 +15,11 @@ async function api(path, opts = {}) {
 function setView(name) {
   $$('.view').forEach(v => v.classList.toggle('active', v.id === `view-${name}`));
   $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  $('#view-title').textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  const titles = { dashboard: 'Repository overview', findings: 'Findings', inventory: 'Inventory', policy: 'Policy & tools', history: 'Report history' };
+  $('#view-title').textContent = titles[name];
+  $('#breadcrumb').textContent = name === 'dashboard' ? 'OVERVIEW' : name.toUpperCase();
+  if (name === 'policy') { loadPolicy(); loadDoctor(); }
+  if (name === 'history') loadHistory();
 }
 
 function scoreColor(score) {
@@ -57,7 +61,7 @@ function renderResults() {
     <td>${r.required ? 'Yes' : 'No'}</td>
     <td>${fmt(r.duration_seconds, 3)}s</td>
     <td>${esc(r.summary)}</td>
-  </tr>`).join('') || '<tr><td colspan="6" class="muted">No results.</td></tr>';
+  </tr>`).join('') || `<tr><td colspan="6" class="empty-cell"><strong>No results to show</strong><span>${state.report ? 'Try another status filter.' : 'Run a scan to see your check results here.'}</span></td></tr>`;
 }
 
 function renderFindings() {
@@ -66,7 +70,7 @@ function renderFindings() {
   $('#findings-table tbody').innerHTML = rows.map(f => `<tr>
     <td>${esc(f.check)}</td><td>${esc(f.level)}</td><td>${esc(f.rule || '')}</td>
     <td>${esc(f.path || '')}</td><td>${f.line ?? ''}</td><td>${esc(f.message)}</td>
-  </tr>`).join('') || '<tr><td colspan="6" class="muted">No findings. Adapters may include structured findings in future scans.</td></tr>';
+  </tr>`).join('') || `<tr><td colspan="6" class="empty-cell"><strong>No findings to show</strong><span>${q ? 'Try a different search.' : state.report ? 'No structured findings were reported in this scan.' : 'Run a scan to see reported findings.'}</span></td></tr>`;
 }
 
 async function runScan() {
@@ -77,6 +81,7 @@ async function runScan() {
     const report = await api('/api/scan', { method: 'POST', body: JSON.stringify({ path: target }) });
     renderReport(report);
     $('#scan-status').textContent = `Scan complete. Policy ${report.policy_passed ? 'PASS' : 'FAIL'}.`;
+    loadHistory();
   } catch (e) {
     $('#scan-status').textContent = `Error: ${e.message}`;
   } finally { btn.disabled = false; }
@@ -115,8 +120,12 @@ async function loadHistory() {
       <td><button class="ghost" data-load-report="${esc(r.file)}">Load</button></td>
     </tr>`).join('') || '<tr><td colspan="6" class="muted">No saved JSON reports found in .codeproof/reports.</td></tr>';
     $$('#history-table [data-load-report]').forEach(btn => btn.addEventListener('click', async () => {
-      const report = await api(`/api/report?path=${encodeURIComponent(target)}&file=${encodeURIComponent(btn.dataset.loadReport)}`);
-      renderReport(report); setView('dashboard');
+      try {
+        const report = await api(`/api/report?path=${encodeURIComponent(target)}&file=${encodeURIComponent(btn.dataset.loadReport)}`);
+        renderReport(report); setView('dashboard');
+      } catch (e) {
+        $('#history-table tbody').innerHTML = `<tr><td colspan="6" class="muted">Error: ${esc(e.message)}</td></tr>`;
+      }
     }));
   } catch (e) { $('#history-table tbody').innerHTML = `<tr><td colspan="6" class="muted">Error: ${esc(e.message)}</td></tr>`; }
 }
@@ -125,7 +134,7 @@ $$('.nav-btn').forEach(b => b.addEventListener('click', () => setView(b.dataset.
 $('#run-scan').addEventListener('click', runScan);
 $('#status-filter').addEventListener('change', renderResults);
 $('#finding-search').addEventListener('input', renderFindings);
-$('#refresh-doctor').addEventListener('click', loadDoctor);
+$('#refresh-doctor').addEventListener('click', () => setView('policy'));
 $('#load-inventory').addEventListener('click', loadInventory);
 $('#load-policy').addEventListener('click', () => { loadPolicy(); loadDoctor(); });
 $('#load-history').addEventListener('click', loadHistory);
