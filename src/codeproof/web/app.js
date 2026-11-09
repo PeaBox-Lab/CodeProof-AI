@@ -26,3 +26,23 @@ $('#compare').onclick=guard(async()=>{const a=$('#baseline').value,b=$('#current
 $('#download-policy').onclick=()=>{const url=URL.createObjectURL(new Blob([state.meta.policy_yaml],{type:'text/yaml'}));const anchor=document.createElement('a');anchor.href=url;anchor.download='.codeproof.yml';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
 async function poll(){try{await refresh();}catch(exc){error(`Cannot refresh workspace: ${exc.message}`);}setTimeout(poll,state.runs.some(run=>run.status==='running')?1500:10000);}
 navigate();guard(async()=>{state.meta=await api('/api/workspace');$('#repo-name').textContent=state.meta.project;renderTools();await poll();})();
+
+// Theme toggle with persistence
+(function(){
+  const root=document.documentElement;
+  const stored=localStorage.getItem('codeproof-theme');
+  if(stored)root.setAttribute('data-theme',stored);
+  const btn=document.getElementById('theme-toggle');
+  function sync(){const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);if(btn){btn.textContent=dark?'Light mode':'Dark mode';btn.setAttribute('aria-pressed',String(dark));}}
+  sync();
+  btn?.addEventListener('click',()=>{const dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);root.setAttribute('data-theme',dark?'light':'dark');localStorage.setItem('codeproof-theme',dark?'light':'dark');sync();});
+})();
+// Keyboard shortcuts
+document.addEventListener('keydown',event=>{
+  if(event.target&&['INPUT','TEXTAREA','SELECT'].includes(event.target.tagName))return;
+  if(event.key==='n'||event.key==='N'){const b=document.getElementById('new-scan');if(b&&!b.disabled){b.click();event.preventDefault();}}
+  if(event.key==='/'){const s=document.getElementById('finding-search');if(s){s.focus();event.preventDefault();}}
+  if(event.key==='?'){alert('Shortcuts: N new scan, / search findings, Esc close dialog');event.preventDefault();}
+  if(event.key==='Escape'){document.querySelectorAll('dialog[open]').forEach(d=>d.close());}
+});
+const err=document.getElementById('error');if(err)err.setAttribute('aria-live','assertive');
