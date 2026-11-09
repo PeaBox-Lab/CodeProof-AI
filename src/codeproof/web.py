@@ -1,5 +1,5 @@
 from __future__ import annotations
-import json, mimetypes, os, shutil, subprocess, sys, webbrowser
+import json, mimetypes, os, shutil, subprocess, sys, threading, time, webbrowser, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -7,8 +7,10 @@ from . import __version__
 
 GUI_DIR = Path(__file__).resolve().parent / "gui"
 
+_JOBS = {}
+_JOBS_LOCK = threading.Lock()
 
-def _json(handler: BaseHTTPRequestHandler, status: int, payload):
+def _json(handler, status, payload):
     body = json.dumps(payload, default=str).encode("utf-8")
     handler.send_response(status)
     handler.send_header("Content-Type", "application/json; charset=utf-8")
@@ -17,14 +19,56 @@ def _json(handler: BaseHTTPRequestHandler, status: int, payload):
     handler.end_headers()
     handler.wfile.write(body)
 
-def _read_json(handler: BaseHTTPRequestHandler):
+def _read_json(handler):
     n = int(handler.headers.get("Content-Length") or 0)
     raw = handler.rfile.read(n) if n else b"{}"
     return json.loads(raw.decode("utf-8") or "{}")
 
-def _target(path: str | None, default: Path) -> Path:
+def _target(path, default):
     p = Path(path).expanduser() if path else default
     return p.resolve()
+
+class Job:
+    def __init__(self, job_id, root, fail_under):
+        self.id = job_id
+        self.root = root
+        self.fail_under = fail_under
+        self.status = "queued"  # queued/running/done/error/cancelled
+        self.stage = None
+        self.progress = 0
+        self.checks_done = 0
+        self.checks_total = 0
+        self.report = None
+        self.error = None
+        self.cancelled = False
+        self.created_at = time.time()
+        self.thread = None
+
+def _run_job(job):
+    job.status = "running"
+    try:
+        from .config import load
+        from .core import scan as run_scan, ScanCancelled
+        from .reporting import write as write_reports
+        cfg = load(job.root)
+        def on_progress(name, idx, total):
+            if job.cancelled:
+                raise ScanCancelled
+            job.stage = name
+            job.checks_done = idx
+            job.checks_total = total
+            job.progress = int((idx / total) * 100) if total else 0
+        report = run_scan(job.root, cfg, job.fail_under, on_progress=on_progress, cancel=lambda: job.cancelled)
+        write_reports(report, job.root / ".codeproof" / "reports", "all")
+        job.report = report.model_dump(mode="json")
+        job.status = "done"
+        job.progress = 100
+        job.stage = "done"
+    except ScanCancelled:
+        job.status = "cancelled"
+    except Exception as e:
+        job.status = "error"
+        job.error = str(e)
 
 class Handler(BaseHTTPRequestHandler):
     server_version = f"CodeProofGUI/{__version__}"
@@ -85,6 +129,20 @@ class Handler(BaseHTTPRequestHandler):
                 if not name or p.parent != (root / ".codeproof" / "reports").resolve() or not p.exists():
                     return _json(self, 404, {"error": "report not found"})
                 return _json(self, 200, json.loads(p.read_text(encoding="utf-8")))
+            if parsed.path.startswith("/api/jobs/"):
+                parts = parsed.path.strip("/").split("/")
+                # /api/jobs/{id} or /api/jobs/{id}/...
+                if len(parts) >= 3:
+                    jid = parts[2]
+                    with _JOBS_LOCK:
+                        job = _JOBS.get(jid)
+                    if not job:
+                        return _json(self, 404, {"error": "job not found"})
+                    payload = {"id": job.id, "status": job.status, "stage": job.stage, "progress": job.progress,
+                               "checks_done": job.checks_done, "checks_total": job.checks_total, "error": job.error}
+                    if job.status == "done":
+                        payload["report"] = job.report
+                    return _json(self, 200, payload)
             return _json(self, 404, {"error": "not found"})
         except Exception as e:
             return _json(self, 500, {"error": str(e)})
@@ -93,17 +151,26 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         try:
             if parsed.path == "/api/scan":
-                from .config import load
-                from .core import scan as run_scan
-                from .reporting import write as write_reports
                 data = _read_json(self)
                 root = _target(data.get("path"), self.default_target)
                 if not root.exists():
                     return _json(self, 400, {"error": f"target does not exist: {root}"})
-                cfg = load(root)
-                report = run_scan(root, cfg, data.get("fail_under"))
-                write_reports(report, root / ".codeproof" / "reports", "all")
-                return _json(self, 200, report.model_dump(mode="json"))
+                job_id = uuid.uuid4().hex[:12]
+                job = Job(job_id, root, data.get("fail_under"))
+                with _JOBS_LOCK:
+                    _JOBS[job_id] = job
+                job.thread = threading.Thread(target=_run_job, args=(job,), daemon=True)
+                job.thread.start()
+                return _json(self, 202, {"job_id": job_id, "status": "queued"})
+            if parsed.path.startswith("/api/jobs/") and parsed.path.endswith("/cancel"):
+                parts = parsed.path.strip("/").split("/")
+                jid = parts[2] if len(parts) >= 3 else None
+                with _JOBS_LOCK:
+                    job = _JOBS.get(jid) if jid else None
+                if not job:
+                    return _json(self, 404, {"error": "job not found"})
+                job.cancelled = True
+                return _json(self, 200, {"ok": True, "status": job.status})
             if parsed.path == "/api/open-reports":
                 data = _read_json(self)
                 root = _target(data.get("path"), self.default_target)
@@ -120,7 +187,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e:
             return _json(self, 500, {"error": str(e)})
 
-    def _serve_file(self, path: Path):
+    def _serve_file(self, path):
         if GUI_DIR not in path.parents and path != GUI_DIR / "index.html":
             return _json(self, 403, {"error": "forbidden"})
         if not path.exists() or not path.is_file():
@@ -134,7 +201,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-def serve(host: str = "127.0.0.1", port: int = 8787, target: Path | None = None, open_browser: bool = True):
+def serve(host="127.0.0.1", port=8787, target=None, open_browser=True):
     Handler.default_target = (target or Path.cwd()).resolve()
     httpd = ThreadingHTTPServer((host, port), Handler)
     url = f"http://{host}:{port}/"
