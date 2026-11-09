@@ -167,12 +167,19 @@ def sarif(report: ScanReport):
             }
             if finding.path:
                 original = Path(finding.path)
-                path: Path | None = original
+                path: Path | None = None
                 if original.is_absolute():
                     try:
-                        path = original.relative_to(root)
+                        path = original.resolve().relative_to(root)
                     except ValueError:
                         path = None
+                else:
+                    if ".." not in original.parts:
+                        candidate = (root / original).resolve()
+                        try:
+                            path = candidate.relative_to(root)
+                        except ValueError:
+                            path = None
                 if path is not None and ".." not in path.parts:
                     from urllib.parse import quote
 

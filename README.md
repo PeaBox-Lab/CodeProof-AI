@@ -9,7 +9,7 @@ Local-first Python CLI and reusable GitHub Action for verifying Python repositor
 - CI-friendly exit codes
 - GitHub composite Action
 - Local-first scanning
-- Modern local GUI dashboard (`codeproof gui`) for scans, findings, policy, and history
+- Modern local developer workspace (`codeproof serve`) with presets, durable history, findings search, comparison, tool readiness, and policy inspection
 
 ## Install
 ```bash
@@ -79,11 +79,7 @@ Run scans from a responsive browser workspace with four presets, durable history
 codeproof scan . --format sarif
 ```
 
-Read the [workspace guide and use cases](docs/developer-workspace.md) for setup, workflows, storage and deployment boundaries. This is a local single-user workspace.
-codeproof scan . --format all --fail-under 70
-codeproof gui . --host 127.0.0.1 --port 8787
-```
-Reports are stored under `.codeproof/reports/`. The GUI runs locally and uses the same core engine/policy as the CLI. See `ROADMAP.md` for planned enhancements.
+Read the [workspace guide and use cases](docs/developer-workspace.md) for setup, workflows, storage and deployment boundaries. This is a local single-user workspace. Reports are stored under `.codeproof/reports/`.
 
 ## Confidence model
 
