@@ -36,8 +36,16 @@ def markdown(report: ScanReport):
             for finding in result.findings:
                 location = f"{finding.path or ''}{':' + str(finding.line) if finding.line else ''}"
                 text += f"\n- {cell(finding.rule or finding.level)} · {cell(location)}: {cell(finding.message)}"
+    provenance = ""
+    if report.source_revision or report.tool_versions:
+        provenance = "\n\n## Provenance\n"
+        if report.source_revision:
+            provenance += f"- Source revision: `{report.source_revision}`\n"
+        for name, version in report.tool_versions.items():
+            provenance += f"- {name}: {cell(version)}\n"
     return (
         text
+        + provenance
         + "\n\n## Limitations\n"
         + "\n".join("- " + cell(item) for item in report.limitations)
         + "\n"

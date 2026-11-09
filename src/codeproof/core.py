@@ -1,5 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
+import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 
 from . import __version__
 from .adapters import run
@@ -18,6 +20,48 @@ def grade(x: float) -> str:
         if x >= 60
         else "F"
     )
+
+
+def _git_revision(root: Path) -> str | None:
+    try:
+        cp = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=root,
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=2,
+        )
+        if cp.returncode == 0:
+            value = (cp.stdout or "").strip()
+            return value or None
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
+
+
+def _tool_version(name: str) -> str | None:
+    import shutil
+
+    if name in {"syntax", "imports"}:
+        return None
+    path = shutil.which(name)
+    if not path:
+        return None
+    try:
+        cp = subprocess.run(
+            [name, "--version"],
+            check=False,
+            text=True,
+            capture_output=True,
+            timeout=2,
+        )
+        output = (cp.stdout or cp.stderr or "").strip()
+        if output:
+            return output.splitlines()[0].strip()
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+    return None
 
 
 def scan(root, cfg, fail_under=None, jobs=None):
@@ -39,6 +83,12 @@ def scan(root, cfg, fail_under=None, jobs=None):
             cfg.source_paths,
             cfg.test_paths,
         )
+        if check.max_findings is not None and len(result.findings) > check.max_findings:
+            omitted = len(result.findings) - check.max_findings
+            result.findings = result.findings[: check.max_findings]
+            result.evidence = {**result.evidence, "findings_omitted": omitted}
+            if "findings truncated" not in result.summary:
+                result.summary = result.summary + f" ({omitted} more omitted)"
         result.weight = check.weight
         result.required = name in cfg.required_tools
         return result
@@ -83,6 +133,11 @@ def scan(root, cfg, fail_under=None, jobs=None):
         limitations.append(
             "No weighted checks contributed evidence; policy cannot pass."
         )
+    tool_versions = {}
+    for result in results:
+        version = _tool_version(result.name)
+        if version:
+            tool_versions[result.name] = version
     return ScanReport(
         project=root.name,
         target=str(root),
@@ -94,4 +149,7 @@ def scan(root, cfg, fail_under=None, jobs=None):
         fail_under=threshold,
         results=results,
         limitations=limitations,
+        source_revision=_git_revision(root),
+        tool_versions=tool_versions,
+        policy=cfg.model_dump(mode="json"),
     )

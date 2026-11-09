@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 from .files import python_files
@@ -114,6 +115,8 @@ def run(
         return syntax(root, sources)
     if name == "imports":
         return imports(root, sources, timeout)
+    if name == "coverage":
+        return coverage(root, sources, cfg)
     src = [x for x in sources if (root / x).exists()] or ["."]
     commands = {
         "ruff": ["ruff", "check", *src, "--output-format", "json"],
@@ -310,4 +313,76 @@ def imports(root: Path, sources: list[str], timeout: int) -> CheckResult:
         summary=f"{count} modules checked; {len(findings)} failed",
         findings=findings,
         evidence={"modules_checked": count},
+    )
+
+
+def coverage(root: Path, sources: list[str], cfg: str | None) -> CheckResult:
+    started = time.perf_counter()
+    candidates = [root / "coverage.xml"]
+    for src in sources:
+        candidates.append(root / src / "coverage.xml")
+    path = next((p for p in candidates if p.is_file()), None)
+    if path is None:
+        return CheckResult(
+            name="coverage",
+            status=Status.unavailable,
+            duration_seconds=round(time.perf_counter() - started, 3),
+            summary="Requires coverage.xml at the project root",
+        )
+    try:
+        tree = ET.parse(path)
+    except (ET.ParseError, OSError) as exc:
+        return CheckResult(
+            name="coverage",
+            status=Status.error,
+            duration_seconds=round(time.perf_counter() - started, 3),
+            summary=f"Could not parse coverage.xml: {exc}",
+        )
+    root_el = tree.getroot()
+    try:
+        line_rate = float(root_el.get("line-rate", "0"))
+        branch_rate = float(root_el.get("branch-rate", "0"))
+    except ValueError:
+        line_rate = 0.0
+        branch_rate = 0.0
+    lines_valid = int(root_el.get("lines-valid", "0") or 0)
+    lines_covered = int(root_el.get("lines-covered", "0") or 0)
+    threshold = 70.0
+    if cfg:
+        try:
+            threshold = float(cfg)
+        except ValueError:
+            pass
+    findings = []
+    for cls in root_el.iter("class"):
+        filename = cls.get("filename")
+        try:
+            cls_line_rate = float(cls.get("line-rate", "1"))
+        except ValueError:
+            cls_line_rate = 1.0
+        if cls_line_rate * 100 < threshold and filename:
+            findings.append(
+                Finding(
+                    level="warning",
+                    message=f"Line coverage {cls_line_rate * 100:.1f}% is below {threshold:g}%",
+                    path=filename,
+                    rule="coverage",
+                )
+            )
+    findings = findings[:20]
+    passed = line_rate * 100 >= threshold
+    return CheckResult(
+        name="coverage",
+        status=Status.passed if passed else Status.failed,
+        duration_seconds=round(time.perf_counter() - started, 3),
+        summary=f"Line coverage {line_rate * 100:.1f}%, branch coverage {branch_rate * 100:.1f}%",
+        findings=findings,
+        evidence={
+            "line_rate": line_rate,
+            "branch_rate": branch_rate,
+            "lines_covered": lines_covered,
+            "lines_valid": lines_valid,
+            "threshold": threshold,
+            "files_below_threshold": len(findings),
+        },
     )

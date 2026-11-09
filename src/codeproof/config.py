@@ -27,6 +27,11 @@ TOOL_INFO = {
         "Audits requirements.txt against vulnerability services",
         "audit",
     ),
+    "coverage": (
+        "Coverage",
+        "Ingests coverage.xml (Cobertura) line and branch rates",
+        None,
+    ),
 }
 
 
@@ -35,6 +40,7 @@ class CheckConfig(BaseModel):
     enabled: bool = True
     weight: float = Field(default=1, ge=0, allow_inf_nan=False)
     config: str | None = None
+    max_findings: int | None = Field(default=None, ge=1)
 
 
 class Config(BaseModel):

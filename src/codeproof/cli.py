@@ -1,3 +1,4 @@
+import json
 import shutil
 from enum import Enum
 from pathlib import Path
@@ -47,15 +48,34 @@ def tools():
 
 
 @app.command()
-def doctor():
+def doctor(json_output: Annotated[bool, typer.Option("--json", help="Print machine-readable JSON")] = False):
     """Check tool availability and show how to install missing tools."""
+    rows = []
+    for name, (purpose, description, extra) in TOOL_INFO.items():
+        path = None if extra is not None else None
+        if extra is None:
+            available = True
+        else:
+            path = shutil.which(name)
+            available = bool(path)
+        rows.append(
+            {
+                "tool": name,
+                "purpose": purpose,
+                "available": available,
+                "path": path,
+                "install": None if available else f"pip install 'codeproof-ai[{extra}]'",
+            }
+        )
+    if json_output:
+        console.print(json.dumps(rows, indent=2))
+        return
     table = Table("Tool", "Status", "Next step")
-    for name, (_, _, extra) in TOOL_INFO.items():
-        available = extra is None or bool(shutil.which(name))
+    for row in rows:
         table.add_row(
-            name,
-            "available" if available else "missing",
-            "Ready" if available else f"pip install 'codeproof-ai[{extra}]'",
+            row["tool"],
+            "available" if row["available"] else "missing",
+            "Ready" if row["available"] else row["install"],
         )
     console.print(table)
     console.print(

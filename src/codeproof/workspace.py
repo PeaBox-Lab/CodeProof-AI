@@ -83,10 +83,13 @@ def capabilities(cfg, root: Path):
 
 
 class Workspace:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, retention: int = 50):
+        if retention < 1:
+            raise ValueError("retention must be at least 1")
         self.root = root.resolve()
         if not self.root.is_dir():
             raise ValueError("Repository directory does not exist")
+        self.retention = retention
         self.directory = self.root / ".codeproof" / "workspace"
         self.directory.mkdir(parents=True, exist_ok=True)
         self.db = self.directory / "history.sqlite3"
@@ -146,7 +149,7 @@ class Workspace:
     def history(self):
         with self.connect() as db:
             rows = db.execute(
-                "SELECT id,created,status,profile,score,passed,findings,error FROM runs ORDER BY created DESC LIMIT 50"
+                f"SELECT id,created,status,profile,score,passed,findings,error FROM runs ORDER BY created DESC LIMIT {self.retention}"
             ).fetchall()
         summaries = []
         for id_, created, status, profile, score, passed, findings, error in rows:
@@ -197,7 +200,7 @@ class Workspace:
                     ),
                 )
                 db.execute(
-                    "DELETE FROM runs WHERE id NOT IN (SELECT id FROM runs ORDER BY created DESC LIMIT 50)"
+                    f"DELETE FROM runs WHERE id NOT IN (SELECT id FROM runs ORDER BY created DESC LIMIT {self.retention})"
                 )
             self.active = id_
             threading.Thread(target=self._execute, args=(id_, cfg), daemon=True).start()

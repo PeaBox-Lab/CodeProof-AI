@@ -46,3 +46,6 @@ class ScanReport(BaseModel):
     fail_under: float
     results: list[CheckResult]
     limitations: list[str] = Field(default_factory=list)
+    source_revision: str | None = None
+    tool_versions: dict[str, str] = Field(default_factory=dict)
+    policy: dict[str, Any] | None = None
